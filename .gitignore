@@ -1,0 +1,8 @@
+*.pem
+id_*
+!*.pub
+*.key
+*.env
+setupVars.conf
+dnsmasq.leases
+.DS_Store
