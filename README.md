@@ -103,4 +103,4 @@ This repo contains **sanitized** configuration only. Do **not** commit private k
 
 ## Author
 
-Hamzah Bayo — McKinney, TX — bayosowe@outlook.com
+Hamzah Bayo — Dalla/ Fortworth, TX
