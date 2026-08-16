@@ -8,13 +8,13 @@ CYBR 4350 Senior Capstone · Collin College · Hamzah Bayo
 
 ## Overview
 
-SOHO networks face enterprise-grade threats without enterprise budgets or staff. **PiSecureNet** layers four independent security controls on a single ~$80 Raspberry Pi 5 to raise a small network's defensive posture, and validates every control with reproducible evidence.
+SOHO networks face enterprise-grade threats without enterprise budgets or staff. **PiSecureNet** layers independent security controls on a single ~$80 Raspberry Pi 5 to raise a small network's defensive posture, and validates every control with reproducible evidence.
 
 | Layer | Control | Protects |
 |---|---|---|
 | Firewall | `iptables` default-drop policy + NAT, persisted with `netfilter-persistent` | Confidentiality, Integrity |
 | DNS filtering | Pi-hole v6 blocks malicious/ad domains at resolution | Confidentiality, Integrity |
-| DHCP + logging | `dnsmasq` DHCP/DNS caching with lease logging | Availability of forensic evidence |
+| DHCP + logging | `dnsmasq` DHCP with lease logging | Availability of forensic evidence |
 | Wireless | `hostapd` WPA2 access point (CCMP/AES) | Confidentiality |
 | Remote admin | OpenSSH, key-only (password auth disabled) | Confidentiality |
 
@@ -32,25 +32,34 @@ Internet ── ISP gateway ──(Cat6)── [ Raspberry Pi 5: PiSecureNet ] �
 
 ```
 pisecurenet/
-├── README.md                      <- you are here
-├── docs/
-│   ├── PiSecureNet_Capstone_Paper.pdf   <- full report (paper)
-│   ├── architecture.png                 <- topology diagram
-│   └── evidence/                        <- screenshots (see below)
-│       ├── iptables-counters.png
-│       ├── pihole-dashboard.png
-│       └── sysctl-postreboot.png
-├── config/                        <- SANITIZED configs (no secrets)
-│   ├── iptables.rules
-│   ├── sshd_config.snippet
-│   ├── hostapd.conf.sample
-│   ├── dnsmasq.conf.sample
-│   └── 99-pisecurenet.conf        <- /etc/sysctl.d drop-in
-├── scripts/
-│   └── verify.sh                  <- re-runs the evidence checks
-├── EVIDENCE.md                    <- falsifiable-claims table
+├── README.md                        <- you are here
+├── EVIDENCE.md                      <- falsifiable-claims table
+├── SANITIZATION_CHECKLIST.md
+├── GITHUB_SETUP.md
+├── LICENSE
 ├── .gitignore
-└── LICENSE
+├── config/                          <- SANITIZED configs (no secrets)
+│   ├── rules.v4                     <- iptables ruleset (iptables-restore)
+│   ├── hostapd.conf.sample          <- passphrase redacted
+│   ├── dnsmasq.conf.sample
+│   ├── sshd_config.snippet
+│   └── 99-pisecurenet.conf          <- /etc/sysctl.d drop-in
+├── scripts/
+│   └── verify.sh                    <- re-runs the evidence checks
+└── docs/
+    ├── PiSecureNet_Capstone_Paper.pdf   <- full report (paper)
+    └── evidence/                        <- on-device screenshots
+        ├── fw-sysctl-ssh.png            <- firewall counters + sysctl + SSH
+        ├── iptables-save-lease.png      <- full ruleset + DHCP lease
+        ├── nat-crypto-os.png            <- NAT + CCMP + OS version
+        ├── pihole-dashboard.png
+        ├── pihole-recent-blocked.png
+        ├── pihole-network-overview.png
+        ├── pihole-top-blocked.png
+        ├── pihole-upstream-servers.png
+        ├── pihole-blocklists.png
+        ├── pihole-baseline-zero.png
+        └── pihole-dns-failure.png
 ```
 
 ## Reproduce the build
@@ -71,6 +80,7 @@ pisecurenet/
    sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
    sudo netfilter-persistent save
    ```
+   (Or restore the whole ruleset: `sudo iptables-restore < config/rules.v4`)
 2. **IP forwarding persistence (Trixie / systemd-networkd)**
    ```bash
    echo 'net.ipv4.ip_forward = 1' | sudo tee /etc/sysctl.d/99-pisecurenet.conf
@@ -82,6 +92,8 @@ pisecurenet/
 
 ## Verify (evidence checks)
 
+Run `scripts/verify.sh`, or individually — after a reboot for the strongest proof:
+
 ```bash
 sudo iptables -L -v -n        # non-zero DROP counters on INPUT/FORWARD after reboot
 sudo sshd -T | grep -i passwordauthentication   # -> passwordauthentication no
@@ -89,11 +101,11 @@ sysctl net.ipv4.ip_forward    # -> net.ipv4.ip_forward = 1  (after reboot)
 # Pi-hole: query a known-blocked domain, confirm block + incremented count
 ```
 
-See **[EVIDENCE.md](EVIDENCE.md)** for the full falsifiable-claims table (claim / what proves it / **what would disprove it** / how collected).
+See **[EVIDENCE.md](EVIDENCE.md)** for the full falsifiable-claims table (claim / what proves it / **what would disprove it** / how collected), and **[docs/evidence/](docs/evidence)** for the screenshots.
 
 ## Scope
 
-**In scope:** one Pi 5, one SOHO subnet, the five controls above.
+**In scope:** one Pi 5, one SOHO subnet, the controls above.
 **Out of scope (stated for credibility):** multi-subnet segmentation, line-rate IPS, enterprise identity federation.
 **Deferred (future work):** anomaly detection over Pi-hole DNS logs (stretch goal; lease + query logs already positioned as its input).
 
@@ -103,4 +115,4 @@ This repo contains **sanitized** configuration only. Do **not** commit private k
 
 ## Author
 
-Hamzah Bayo — Dalla-Fortworth, TX
+Hamzah Bayo — Dallas–Fort Worth, TX
